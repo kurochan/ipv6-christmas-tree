@@ -1,0 +1,20 @@
+#!/bin/bash
+
+IPV6_ADDRESS=${ipv6_address}
+IPV6_PREFIX=${ipv6_prefix}
+
+echo "addr = $${IPV6_ADDRESS}" >> /home/ubuntu/init.out
+echo "prefix = $${IPV6_PREFIX}" >> /home/ubuntu/init.out
+
+cat << EOS > /etc/netplan/60-config.yaml
+network:
+  version: 2
+  ethernets:
+    ens5:
+      addresses:
+        - $${IPV6_PREFIX}
+EOS
+
+chmod 600 /etc/netplan/60-config.yaml
+netplan apply
+
