@@ -121,6 +121,24 @@ EOF
   }
 }
 
+resource "aws_iam_role_policy" "ec2_s3" {
+  role   = aws_iam_role.ec2.id
+  name   = "policy"
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "policy0",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "${aws_s3_bucket.script.arn}/*"
+    }
+  ]
+}
+EOF
+}
+
 resource "aws_iam_policy_attachment" "ec2_ssm" {
   name       = "${local.project_name}-ec2-ssm"
   roles      = [aws_iam_role.ec2.name]
@@ -177,8 +195,8 @@ resource "aws_instance" "ec2" {
   iam_instance_profile = aws_iam_instance_profile.ec2.id
 
   user_data = templatefile("${path.module}/user_data.sh.tftpl", {
-    ipv6_address = cidrhost(tolist(aws_network_interface.ec2.ipv6_prefixes)[0], 0),
-    ipv6_prefix  = tolist(aws_network_interface.ec2.ipv6_prefixes)[0],
+    ipv6_prefix = cidrhost(tolist(aws_network_interface.ec2.ipv6_prefixes)[0], 0),
+    s3_bucket   = aws_s3_bucket.script.bucket
   })
 
   tags = {
@@ -190,4 +208,41 @@ resource "aws_instance" "ec2" {
       ami
     ]
   }
+}
+
+resource "random_string" "script_suffix" {
+  length  = 16
+  special = false
+  upper   = false
+}
+
+resource "aws_s3_bucket" "script" {
+  bucket = "${local.project_name}-script-${random_string.script_suffix.id}"
+}
+
+output "script_bucket_name" {
+  value = aws_s3_bucket.script.bucket
+}
+
+resource "aws_s3_bucket_public_access_block" "script" {
+  bucket = aws_s3_bucket.script.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+locals {
+  script_content = templatefile("${path.module}/multihop.sh.tftpl", {
+    ipv6_prefix = cidrhost(tolist(aws_network_interface.ec2.ipv6_prefixes)[0], 0),
+  })
+}
+
+resource "aws_s3_object" "object" {
+  bucket = aws_s3_bucket.script.bucket
+  key    = "multihop.sh"
+
+  content = local.script_content
+  etag    = md5(local.script_content)
 }

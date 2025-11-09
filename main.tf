@@ -35,7 +35,7 @@ resource "random_string" "tfstate_suffix" {
 }
 
 resource "aws_s3_bucket" "tfstate" {
-  bucket = "${local.project_name}-${random_string.tfstate_suffix.id}"
+  bucket = "${local.project_name}-tfstate-${random_string.tfstate_suffix.id}"
 }
 
 output "tfstate_bucket_name" {

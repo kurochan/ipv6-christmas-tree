@@ -1,0 +1,889 @@
+#!/bin/bash
+set -eux
+
+# setup multihop
+
+# r1
+sysctl -w net.ipv6.conf.all.forwarding=1
+sysctl -w net.ipv6.conf.default.forwarding=1
+ip netns add r1
+ip netns exec r1 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r1 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-h-r1 type veth peer name veth-r1-h
+ip link set veth-h-r1 up
+ip link set veth-r1-h netns r1
+ip -n r1 link set veth-r1-h up
+ip -6 addr add ${ipv6_prefix}2/127 dev veth-h-r1
+ip -6 -n r1 addr add ${ipv6_prefix}3/127 dev veth-r1-h
+ip -6 -n r1 route add default dev veth-r1-h via ${ipv6_prefix}2
+
+# r2
+ip netns add r2
+ip netns exec r2 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r2 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r1-r2 type veth peer name veth-r2-r1
+ip link set veth-r1-r2 netns r1
+ip -n r1 link set veth-r1-r2 up
+ip link set veth-r2-r1 netns r2
+ip -n r2 link set veth-r2-r1 up
+ip -6 -n r1 addr add ${ipv6_prefix}4/127 dev veth-r1-r2
+ip -6 -n r2 addr add ${ipv6_prefix}5/127 dev veth-r2-r1
+ip -6 -n r2 route add default dev veth-r2-r1 via ${ipv6_prefix}4
+
+# r3
+ip netns add r3
+ip netns exec r3 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r3 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r2-r3 type veth peer name veth-r3-r2
+ip link set veth-r2-r3 netns r2
+ip -n r2 link set veth-r2-r3 up
+ip link set veth-r3-r2 netns r3
+ip -n r3 link set veth-r3-r2 up
+ip -6 -n r2 addr add ${ipv6_prefix}6/127 dev veth-r2-r3
+ip -6 -n r3 addr add ${ipv6_prefix}7/127 dev veth-r3-r2
+ip -6 -n r3 route add default dev veth-r3-r2 via ${ipv6_prefix}6
+
+# r4
+ip netns add r4
+ip netns exec r4 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r4 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r3-r4 type veth peer name veth-r4-r3
+ip link set veth-r3-r4 netns r3
+ip -n r3 link set veth-r3-r4 up
+ip link set veth-r4-r3 netns r4
+ip -n r4 link set veth-r4-r3 up
+ip -6 -n r3 addr add ${ipv6_prefix}8/127 dev veth-r3-r4
+ip -6 -n r4 addr add ${ipv6_prefix}9/127 dev veth-r4-r3
+ip -6 -n r4 route add default dev veth-r4-r3 via ${ipv6_prefix}8
+
+# r5
+ip netns add r5
+ip netns exec r5 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r5 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r4-r5 type veth peer name veth-r5-r4
+ip link set veth-r4-r5 netns r4
+ip -n r4 link set veth-r4-r5 up
+ip link set veth-r5-r4 netns r5
+ip -n r5 link set veth-r5-r4 up
+ip -6 -n r4 addr add ${ipv6_prefix}a/127 dev veth-r4-r5
+ip -6 -n r5 addr add ${ipv6_prefix}b/127 dev veth-r5-r4
+ip -6 -n r5 route add default dev veth-r5-r4 via ${ipv6_prefix}a
+
+# r6
+ip netns add r6
+ip netns exec r6 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r6 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r5-r6 type veth peer name veth-r6-r5
+ip link set veth-r5-r6 netns r5
+ip -n r5 link set veth-r5-r6 up
+ip link set veth-r6-r5 netns r6
+ip -n r6 link set veth-r6-r5 up
+ip -6 -n r5 addr add ${ipv6_prefix}c/127 dev veth-r5-r6
+ip -6 -n r6 addr add ${ipv6_prefix}d/127 dev veth-r6-r5
+ip -6 -n r6 route add default dev veth-r6-r5 via ${ipv6_prefix}c
+
+# r7
+ip netns add r7
+ip netns exec r7 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r7 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r6-r7 type veth peer name veth-r7-r6
+ip link set veth-r6-r7 netns r6
+ip -n r6 link set veth-r6-r7 up
+ip link set veth-r7-r6 netns r7
+ip -n r7 link set veth-r7-r6 up
+ip -6 -n r6 addr add ${ipv6_prefix}e/127 dev veth-r6-r7
+ip -6 -n r7 addr add ${ipv6_prefix}f/127 dev veth-r7-r6
+ip -6 -n r7 route add default dev veth-r7-r6 via ${ipv6_prefix}e
+
+# r8
+ip netns add r8
+ip netns exec r8 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r8 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r7-r8 type veth peer name veth-r8-r7
+ip link set veth-r7-r8 netns r7
+ip -n r7 link set veth-r7-r8 up
+ip link set veth-r8-r7 netns r8
+ip -n r8 link set veth-r8-r7 up
+ip -6 -n r7 addr add ${ipv6_prefix}10/127 dev veth-r7-r8
+ip -6 -n r8 addr add ${ipv6_prefix}11/127 dev veth-r8-r7
+ip -6 -n r8 route add default dev veth-r8-r7 via ${ipv6_prefix}10
+
+# r9
+ip netns add r9
+ip netns exec r9 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r9 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r8-r9 type veth peer name veth-r9-r8
+ip link set veth-r8-r9 netns r8
+ip -n r8 link set veth-r8-r9 up
+ip link set veth-r9-r8 netns r9
+ip -n r9 link set veth-r9-r8 up
+ip -6 -n r8 addr add ${ipv6_prefix}12/127 dev veth-r8-r9
+ip -6 -n r9 addr add ${ipv6_prefix}13/127 dev veth-r9-r8
+ip -6 -n r9 route add default dev veth-r9-r8 via ${ipv6_prefix}12
+
+# r10
+ip netns add r10
+ip netns exec r10 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r10 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r9-r10 type veth peer name veth-r10-r9
+ip link set veth-r9-r10 netns r9
+ip -n r9 link set veth-r9-r10 up
+ip link set veth-r10-r9 netns r10
+ip -n r10 link set veth-r10-r9 up
+ip -6 -n r9 addr add ${ipv6_prefix}14/127 dev veth-r9-r10
+ip -6 -n r10 addr add ${ipv6_prefix}15/127 dev veth-r10-r9
+ip -6 -n r10 route add default dev veth-r10-r9 via ${ipv6_prefix}14
+
+# r11
+ip netns add r11
+ip netns exec r11 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r11 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r10-r11 type veth peer name veth-r11-r10
+ip link set veth-r10-r11 netns r10
+ip -n r10 link set veth-r10-r11 up
+ip link set veth-r11-r10 netns r11
+ip -n r11 link set veth-r11-r10 up
+ip -6 -n r10 addr add ${ipv6_prefix}16/127 dev veth-r10-r11
+ip -6 -n r11 addr add ${ipv6_prefix}17/127 dev veth-r11-r10
+ip -6 -n r11 route add default dev veth-r11-r10 via ${ipv6_prefix}16
+
+# r12
+ip netns add r12
+ip netns exec r12 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r12 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r11-r12 type veth peer name veth-r12-r11
+ip link set veth-r11-r12 netns r11
+ip -n r11 link set veth-r11-r12 up
+ip link set veth-r12-r11 netns r12
+ip -n r12 link set veth-r12-r11 up
+ip -6 -n r11 addr add ${ipv6_prefix}18/127 dev veth-r11-r12
+ip -6 -n r12 addr add ${ipv6_prefix}19/127 dev veth-r12-r11
+ip -6 -n r12 route add default dev veth-r12-r11 via ${ipv6_prefix}18
+
+# r13
+ip netns add r13
+ip netns exec r13 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r13 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r12-r13 type veth peer name veth-r13-r12
+ip link set veth-r12-r13 netns r12
+ip -n r12 link set veth-r12-r13 up
+ip link set veth-r13-r12 netns r13
+ip -n r13 link set veth-r13-r12 up
+ip -6 -n r12 addr add ${ipv6_prefix}1a/127 dev veth-r12-r13
+ip -6 -n r13 addr add ${ipv6_prefix}1b/127 dev veth-r13-r12
+ip -6 -n r13 route add default dev veth-r13-r12 via ${ipv6_prefix}1a
+
+# r14
+ip netns add r14
+ip netns exec r14 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r14 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r13-r14 type veth peer name veth-r14-r13
+ip link set veth-r13-r14 netns r13
+ip -n r13 link set veth-r13-r14 up
+ip link set veth-r14-r13 netns r14
+ip -n r14 link set veth-r14-r13 up
+ip -6 -n r13 addr add ${ipv6_prefix}1c/127 dev veth-r13-r14
+ip -6 -n r14 addr add ${ipv6_prefix}1d/127 dev veth-r14-r13
+ip -6 -n r14 route add default dev veth-r14-r13 via ${ipv6_prefix}1c
+
+# r15
+ip netns add r15
+ip netns exec r15 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r15 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r14-r15 type veth peer name veth-r15-r14
+ip link set veth-r14-r15 netns r14
+ip -n r14 link set veth-r14-r15 up
+ip link set veth-r15-r14 netns r15
+ip -n r15 link set veth-r15-r14 up
+ip -6 -n r14 addr add ${ipv6_prefix}1e/127 dev veth-r14-r15
+ip -6 -n r15 addr add ${ipv6_prefix}1f/127 dev veth-r15-r14
+ip -6 -n r15 route add default dev veth-r15-r14 via ${ipv6_prefix}1e
+
+# r16
+ip netns add r16
+ip netns exec r16 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r16 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r15-r16 type veth peer name veth-r16-r15
+ip link set veth-r15-r16 netns r15
+ip -n r15 link set veth-r15-r16 up
+ip link set veth-r16-r15 netns r16
+ip -n r16 link set veth-r16-r15 up
+ip -6 -n r15 addr add ${ipv6_prefix}20/127 dev veth-r15-r16
+ip -6 -n r16 addr add ${ipv6_prefix}21/127 dev veth-r16-r15
+ip -6 -n r16 route add default dev veth-r16-r15 via ${ipv6_prefix}20
+
+# r17
+ip netns add r17
+ip netns exec r17 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r17 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r16-r17 type veth peer name veth-r17-r16
+ip link set veth-r16-r17 netns r16
+ip -n r16 link set veth-r16-r17 up
+ip link set veth-r17-r16 netns r17
+ip -n r17 link set veth-r17-r16 up
+ip -6 -n r16 addr add ${ipv6_prefix}22/127 dev veth-r16-r17
+ip -6 -n r17 addr add ${ipv6_prefix}23/127 dev veth-r17-r16
+ip -6 -n r17 route add default dev veth-r17-r16 via ${ipv6_prefix}22
+
+# r18
+ip netns add r18
+ip netns exec r18 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r18 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r17-r18 type veth peer name veth-r18-r17
+ip link set veth-r17-r18 netns r17
+ip -n r17 link set veth-r17-r18 up
+ip link set veth-r18-r17 netns r18
+ip -n r18 link set veth-r18-r17 up
+ip -6 -n r17 addr add ${ipv6_prefix}24/127 dev veth-r17-r18
+ip -6 -n r18 addr add ${ipv6_prefix}25/127 dev veth-r18-r17
+ip -6 -n r18 route add default dev veth-r18-r17 via ${ipv6_prefix}24
+
+# r19
+ip netns add r19
+ip netns exec r19 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r19 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r18-r19 type veth peer name veth-r19-r18
+ip link set veth-r18-r19 netns r18
+ip -n r18 link set veth-r18-r19 up
+ip link set veth-r19-r18 netns r19
+ip -n r19 link set veth-r19-r18 up
+ip -6 -n r18 addr add ${ipv6_prefix}26/127 dev veth-r18-r19
+ip -6 -n r19 addr add ${ipv6_prefix}27/127 dev veth-r19-r18
+ip -6 -n r19 route add default dev veth-r19-r18 via ${ipv6_prefix}26
+
+# r20
+ip netns add r20
+ip netns exec r20 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r20 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r19-r20 type veth peer name veth-r20-r19
+ip link set veth-r19-r20 netns r19
+ip -n r19 link set veth-r19-r20 up
+ip link set veth-r20-r19 netns r20
+ip -n r20 link set veth-r20-r19 up
+ip -6 -n r19 addr add ${ipv6_prefix}28/127 dev veth-r19-r20
+ip -6 -n r20 addr add ${ipv6_prefix}29/127 dev veth-r20-r19
+ip -6 -n r20 route add default dev veth-r20-r19 via ${ipv6_prefix}28
+
+# r21
+ip netns add r21
+ip netns exec r21 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r21 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r20-r21 type veth peer name veth-r21-r20
+ip link set veth-r20-r21 netns r20
+ip -n r20 link set veth-r20-r21 up
+ip link set veth-r21-r20 netns r21
+ip -n r21 link set veth-r21-r20 up
+ip -6 -n r20 addr add ${ipv6_prefix}2a/127 dev veth-r20-r21
+ip -6 -n r21 addr add ${ipv6_prefix}2b/127 dev veth-r21-r20
+ip -6 -n r21 route add default dev veth-r21-r20 via ${ipv6_prefix}2a
+
+# r22
+ip netns add r22
+ip netns exec r22 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r22 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r21-r22 type veth peer name veth-r22-r21
+ip link set veth-r21-r22 netns r21
+ip -n r21 link set veth-r21-r22 up
+ip link set veth-r22-r21 netns r22
+ip -n r22 link set veth-r22-r21 up
+ip -6 -n r21 addr add ${ipv6_prefix}2c/127 dev veth-r21-r22
+ip -6 -n r22 addr add ${ipv6_prefix}2d/127 dev veth-r22-r21
+ip -6 -n r22 route add default dev veth-r22-r21 via ${ipv6_prefix}2c
+
+# r23
+ip netns add r23
+ip netns exec r23 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r23 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r22-r23 type veth peer name veth-r23-r22
+ip link set veth-r22-r23 netns r22
+ip -n r22 link set veth-r22-r23 up
+ip link set veth-r23-r22 netns r23
+ip -n r23 link set veth-r23-r22 up
+ip -6 -n r22 addr add ${ipv6_prefix}2e/127 dev veth-r22-r23
+ip -6 -n r23 addr add ${ipv6_prefix}2f/127 dev veth-r23-r22
+ip -6 -n r23 route add default dev veth-r23-r22 via ${ipv6_prefix}2e
+
+# r24
+ip netns add r24
+ip netns exec r24 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r24 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r23-r24 type veth peer name veth-r24-r23
+ip link set veth-r23-r24 netns r23
+ip -n r23 link set veth-r23-r24 up
+ip link set veth-r24-r23 netns r24
+ip -n r24 link set veth-r24-r23 up
+ip -6 -n r23 addr add ${ipv6_prefix}30/127 dev veth-r23-r24
+ip -6 -n r24 addr add ${ipv6_prefix}31/127 dev veth-r24-r23
+ip -6 -n r24 route add default dev veth-r24-r23 via ${ipv6_prefix}30
+
+# r25
+ip netns add r25
+ip netns exec r25 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r25 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r24-r25 type veth peer name veth-r25-r24
+ip link set veth-r24-r25 netns r24
+ip -n r24 link set veth-r24-r25 up
+ip link set veth-r25-r24 netns r25
+ip -n r25 link set veth-r25-r24 up
+ip -6 -n r24 addr add ${ipv6_prefix}32/127 dev veth-r24-r25
+ip -6 -n r25 addr add ${ipv6_prefix}33/127 dev veth-r25-r24
+ip -6 -n r25 route add default dev veth-r25-r24 via ${ipv6_prefix}32
+
+# r26
+ip netns add r26
+ip netns exec r26 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r26 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r25-r26 type veth peer name veth-r26-r25
+ip link set veth-r25-r26 netns r25
+ip -n r25 link set veth-r25-r26 up
+ip link set veth-r26-r25 netns r26
+ip -n r26 link set veth-r26-r25 up
+ip -6 -n r25 addr add ${ipv6_prefix}34/127 dev veth-r25-r26
+ip -6 -n r26 addr add ${ipv6_prefix}35/127 dev veth-r26-r25
+ip -6 -n r26 route add default dev veth-r26-r25 via ${ipv6_prefix}34
+
+# r27
+ip netns add r27
+ip netns exec r27 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r27 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r26-r27 type veth peer name veth-r27-r26
+ip link set veth-r26-r27 netns r26
+ip -n r26 link set veth-r26-r27 up
+ip link set veth-r27-r26 netns r27
+ip -n r27 link set veth-r27-r26 up
+ip -6 -n r26 addr add ${ipv6_prefix}36/127 dev veth-r26-r27
+ip -6 -n r27 addr add ${ipv6_prefix}37/127 dev veth-r27-r26
+ip -6 -n r27 route add default dev veth-r27-r26 via ${ipv6_prefix}36
+
+# r28
+ip netns add r28
+ip netns exec r28 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r28 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r27-r28 type veth peer name veth-r28-r27
+ip link set veth-r27-r28 netns r27
+ip -n r27 link set veth-r27-r28 up
+ip link set veth-r28-r27 netns r28
+ip -n r28 link set veth-r28-r27 up
+ip -6 -n r27 addr add ${ipv6_prefix}38/127 dev veth-r27-r28
+ip -6 -n r28 addr add ${ipv6_prefix}39/127 dev veth-r28-r27
+ip -6 -n r28 route add default dev veth-r28-r27 via ${ipv6_prefix}38
+
+# r29
+ip netns add r29
+ip netns exec r29 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r29 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r28-r29 type veth peer name veth-r29-r28
+ip link set veth-r28-r29 netns r28
+ip -n r28 link set veth-r28-r29 up
+ip link set veth-r29-r28 netns r29
+ip -n r29 link set veth-r29-r28 up
+ip -6 -n r28 addr add ${ipv6_prefix}3a/127 dev veth-r28-r29
+ip -6 -n r29 addr add ${ipv6_prefix}3b/127 dev veth-r29-r28
+ip -6 -n r29 route add default dev veth-r29-r28 via ${ipv6_prefix}3a
+
+# r30
+ip netns add r30
+ip netns exec r30 sysctl -w net.ipv6.conf.all.forwarding=1
+ip netns exec r30 sysctl -w net.ipv6.conf.default.forwarding=1
+ip link add veth-r29-r30 type veth peer name veth-r30-r29
+ip link set veth-r29-r30 netns r29
+ip -n r29 link set veth-r29-r30 up
+ip link set veth-r30-r29 netns r30
+ip -n r30 link set veth-r30-r29 up
+ip -6 -n r29 addr add ${ipv6_prefix}3c/127 dev veth-r29-r30
+ip -6 -n r30 addr add ${ipv6_prefix}3d/127 dev veth-r30-r29
+ip -6 -n r30 route add default dev veth-r30-r29 via ${ipv6_prefix}3c
+
+# static routes
+# r1
+ip -6 route add ${ipv6_prefix}4/127 dev veth-h-r1 via ${ipv6_prefix}3 # r2
+ip -6 route add ${ipv6_prefix}6/127 dev veth-h-r1 via ${ipv6_prefix}3 # r3
+ip -6 route add ${ipv6_prefix}8/127 dev veth-h-r1 via ${ipv6_prefix}3 # r4
+ip -6 route add ${ipv6_prefix}a/127 dev veth-h-r1 via ${ipv6_prefix}3 # r5
+ip -6 route add ${ipv6_prefix}c/127 dev veth-h-r1 via ${ipv6_prefix}3 # r6
+ip -6 route add ${ipv6_prefix}e/127 dev veth-h-r1 via ${ipv6_prefix}3 # r7
+ip -6 route add ${ipv6_prefix}10/127 dev veth-h-r1 via ${ipv6_prefix}3 # r8
+ip -6 route add ${ipv6_prefix}12/127 dev veth-h-r1 via ${ipv6_prefix}3 # r9
+ip -6 route add ${ipv6_prefix}14/127 dev veth-h-r1 via ${ipv6_prefix}3 # r10
+ip -6 route add ${ipv6_prefix}16/127 dev veth-h-r1 via ${ipv6_prefix}3 # r11
+ip -6 route add ${ipv6_prefix}18/127 dev veth-h-r1 via ${ipv6_prefix}3 # r12
+ip -6 route add ${ipv6_prefix}1a/127 dev veth-h-r1 via ${ipv6_prefix}3 # r13
+ip -6 route add ${ipv6_prefix}1c/127 dev veth-h-r1 via ${ipv6_prefix}3 # r14
+ip -6 route add ${ipv6_prefix}1e/127 dev veth-h-r1 via ${ipv6_prefix}3 # r15
+ip -6 route add ${ipv6_prefix}20/127 dev veth-h-r1 via ${ipv6_prefix}3 # r16
+ip -6 route add ${ipv6_prefix}22/127 dev veth-h-r1 via ${ipv6_prefix}3 # r17
+ip -6 route add ${ipv6_prefix}24/127 dev veth-h-r1 via ${ipv6_prefix}3 # r18
+ip -6 route add ${ipv6_prefix}26/127 dev veth-h-r1 via ${ipv6_prefix}3 # r19
+ip -6 route add ${ipv6_prefix}28/127 dev veth-h-r1 via ${ipv6_prefix}3 # r20
+ip -6 route add ${ipv6_prefix}2a/127 dev veth-h-r1 via ${ipv6_prefix}3 # r21
+ip -6 route add ${ipv6_prefix}2c/127 dev veth-h-r1 via ${ipv6_prefix}3 # r22
+ip -6 route add ${ipv6_prefix}2e/127 dev veth-h-r1 via ${ipv6_prefix}3 # r23
+ip -6 route add ${ipv6_prefix}30/127 dev veth-h-r1 via ${ipv6_prefix}3 # r24
+ip -6 route add ${ipv6_prefix}32/127 dev veth-h-r1 via ${ipv6_prefix}3 # r25
+ip -6 route add ${ipv6_prefix}34/127 dev veth-h-r1 via ${ipv6_prefix}3 # r26
+ip -6 route add ${ipv6_prefix}36/127 dev veth-h-r1 via ${ipv6_prefix}3 # r27
+ip -6 route add ${ipv6_prefix}38/127 dev veth-h-r1 via ${ipv6_prefix}3 # r28
+ip -6 route add ${ipv6_prefix}3a/127 dev veth-h-r1 via ${ipv6_prefix}3 # r29
+ip -6 route add ${ipv6_prefix}3c/127 dev veth-h-r1 via ${ipv6_prefix}3 # r30
+
+# r1
+ip -6 -n r1 route add ${ipv6_prefix}6/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r3
+ip -6 -n r1 route add ${ipv6_prefix}8/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r4
+ip -6 -n r1 route add ${ipv6_prefix}a/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r5
+ip -6 -n r1 route add ${ipv6_prefix}c/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r6
+ip -6 -n r1 route add ${ipv6_prefix}e/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r7
+ip -6 -n r1 route add ${ipv6_prefix}10/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r8
+ip -6 -n r1 route add ${ipv6_prefix}12/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r9
+ip -6 -n r1 route add ${ipv6_prefix}14/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r10
+ip -6 -n r1 route add ${ipv6_prefix}16/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r11
+ip -6 -n r1 route add ${ipv6_prefix}18/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r12
+ip -6 -n r1 route add ${ipv6_prefix}1a/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r13
+ip -6 -n r1 route add ${ipv6_prefix}1c/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r14
+ip -6 -n r1 route add ${ipv6_prefix}1e/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r15
+ip -6 -n r1 route add ${ipv6_prefix}20/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r16
+ip -6 -n r1 route add ${ipv6_prefix}22/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r17
+ip -6 -n r1 route add ${ipv6_prefix}24/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r18
+ip -6 -n r1 route add ${ipv6_prefix}26/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r19
+ip -6 -n r1 route add ${ipv6_prefix}28/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r20
+ip -6 -n r1 route add ${ipv6_prefix}2a/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r21
+ip -6 -n r1 route add ${ipv6_prefix}2c/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r22
+ip -6 -n r1 route add ${ipv6_prefix}2e/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r23
+ip -6 -n r1 route add ${ipv6_prefix}30/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r24
+ip -6 -n r1 route add ${ipv6_prefix}32/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r25
+ip -6 -n r1 route add ${ipv6_prefix}34/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r26
+ip -6 -n r1 route add ${ipv6_prefix}36/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r27
+ip -6 -n r1 route add ${ipv6_prefix}38/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r28
+ip -6 -n r1 route add ${ipv6_prefix}3a/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r29
+ip -6 -n r1 route add ${ipv6_prefix}3c/127 dev veth-r1-r2 via ${ipv6_prefix}5 # r30
+
+# r2
+ip -6 -n r2 route add ${ipv6_prefix}8/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r4
+ip -6 -n r2 route add ${ipv6_prefix}a/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r5
+ip -6 -n r2 route add ${ipv6_prefix}c/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r6
+ip -6 -n r2 route add ${ipv6_prefix}e/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r7
+ip -6 -n r2 route add ${ipv6_prefix}10/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r8
+ip -6 -n r2 route add ${ipv6_prefix}12/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r9
+ip -6 -n r2 route add ${ipv6_prefix}14/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r10
+ip -6 -n r2 route add ${ipv6_prefix}16/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r11
+ip -6 -n r2 route add ${ipv6_prefix}18/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r12
+ip -6 -n r2 route add ${ipv6_prefix}1a/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r13
+ip -6 -n r2 route add ${ipv6_prefix}1c/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r14
+ip -6 -n r2 route add ${ipv6_prefix}1e/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r15
+ip -6 -n r2 route add ${ipv6_prefix}20/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r16
+ip -6 -n r2 route add ${ipv6_prefix}22/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r17
+ip -6 -n r2 route add ${ipv6_prefix}24/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r18
+ip -6 -n r2 route add ${ipv6_prefix}26/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r19
+ip -6 -n r2 route add ${ipv6_prefix}28/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r20
+ip -6 -n r2 route add ${ipv6_prefix}2a/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r21
+ip -6 -n r2 route add ${ipv6_prefix}2c/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r22
+ip -6 -n r2 route add ${ipv6_prefix}2e/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r23
+ip -6 -n r2 route add ${ipv6_prefix}30/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r24
+ip -6 -n r2 route add ${ipv6_prefix}32/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r25
+ip -6 -n r2 route add ${ipv6_prefix}34/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r26
+ip -6 -n r2 route add ${ipv6_prefix}36/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r27
+ip -6 -n r2 route add ${ipv6_prefix}38/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r28
+ip -6 -n r2 route add ${ipv6_prefix}3a/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r29
+ip -6 -n r2 route add ${ipv6_prefix}3c/127 dev veth-r2-r3 via ${ipv6_prefix}7 # r30
+
+# r3
+ip -6 -n r3 route add ${ipv6_prefix}a/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r5
+ip -6 -n r3 route add ${ipv6_prefix}c/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r6
+ip -6 -n r3 route add ${ipv6_prefix}e/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r7
+ip -6 -n r3 route add ${ipv6_prefix}10/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r8
+ip -6 -n r3 route add ${ipv6_prefix}12/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r9
+ip -6 -n r3 route add ${ipv6_prefix}14/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r10
+ip -6 -n r3 route add ${ipv6_prefix}16/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r11
+ip -6 -n r3 route add ${ipv6_prefix}18/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r12
+ip -6 -n r3 route add ${ipv6_prefix}1a/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r13
+ip -6 -n r3 route add ${ipv6_prefix}1c/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r14
+ip -6 -n r3 route add ${ipv6_prefix}1e/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r15
+ip -6 -n r3 route add ${ipv6_prefix}20/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r16
+ip -6 -n r3 route add ${ipv6_prefix}22/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r17
+ip -6 -n r3 route add ${ipv6_prefix}24/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r18
+ip -6 -n r3 route add ${ipv6_prefix}26/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r19
+ip -6 -n r3 route add ${ipv6_prefix}28/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r20
+ip -6 -n r3 route add ${ipv6_prefix}2a/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r21
+ip -6 -n r3 route add ${ipv6_prefix}2c/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r22
+ip -6 -n r3 route add ${ipv6_prefix}2e/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r23
+ip -6 -n r3 route add ${ipv6_prefix}30/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r24
+ip -6 -n r3 route add ${ipv6_prefix}32/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r25
+ip -6 -n r3 route add ${ipv6_prefix}34/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r26
+ip -6 -n r3 route add ${ipv6_prefix}36/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r27
+ip -6 -n r3 route add ${ipv6_prefix}38/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r28
+ip -6 -n r3 route add ${ipv6_prefix}3a/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r29
+ip -6 -n r3 route add ${ipv6_prefix}3c/127 dev veth-r3-r4 via ${ipv6_prefix}9 # r30
+
+# r4
+ip -6 -n r4 route add ${ipv6_prefix}c/127 dev veth-r4-r5 via ${ipv6_prefix}b # r6
+ip -6 -n r4 route add ${ipv6_prefix}e/127 dev veth-r4-r5 via ${ipv6_prefix}b # r7
+ip -6 -n r4 route add ${ipv6_prefix}10/127 dev veth-r4-r5 via ${ipv6_prefix}b # r8
+ip -6 -n r4 route add ${ipv6_prefix}12/127 dev veth-r4-r5 via ${ipv6_prefix}b # r9
+ip -6 -n r4 route add ${ipv6_prefix}14/127 dev veth-r4-r5 via ${ipv6_prefix}b # r10
+ip -6 -n r4 route add ${ipv6_prefix}16/127 dev veth-r4-r5 via ${ipv6_prefix}b # r11
+ip -6 -n r4 route add ${ipv6_prefix}18/127 dev veth-r4-r5 via ${ipv6_prefix}b # r12
+ip -6 -n r4 route add ${ipv6_prefix}1a/127 dev veth-r4-r5 via ${ipv6_prefix}b # r13
+ip -6 -n r4 route add ${ipv6_prefix}1c/127 dev veth-r4-r5 via ${ipv6_prefix}b # r14
+ip -6 -n r4 route add ${ipv6_prefix}1e/127 dev veth-r4-r5 via ${ipv6_prefix}b # r15
+ip -6 -n r4 route add ${ipv6_prefix}20/127 dev veth-r4-r5 via ${ipv6_prefix}b # r16
+ip -6 -n r4 route add ${ipv6_prefix}22/127 dev veth-r4-r5 via ${ipv6_prefix}b # r17
+ip -6 -n r4 route add ${ipv6_prefix}24/127 dev veth-r4-r5 via ${ipv6_prefix}b # r18
+ip -6 -n r4 route add ${ipv6_prefix}26/127 dev veth-r4-r5 via ${ipv6_prefix}b # r19
+ip -6 -n r4 route add ${ipv6_prefix}28/127 dev veth-r4-r5 via ${ipv6_prefix}b # r20
+ip -6 -n r4 route add ${ipv6_prefix}2a/127 dev veth-r4-r5 via ${ipv6_prefix}b # r21
+ip -6 -n r4 route add ${ipv6_prefix}2c/127 dev veth-r4-r5 via ${ipv6_prefix}b # r22
+ip -6 -n r4 route add ${ipv6_prefix}2e/127 dev veth-r4-r5 via ${ipv6_prefix}b # r23
+ip -6 -n r4 route add ${ipv6_prefix}30/127 dev veth-r4-r5 via ${ipv6_prefix}b # r24
+ip -6 -n r4 route add ${ipv6_prefix}32/127 dev veth-r4-r5 via ${ipv6_prefix}b # r25
+ip -6 -n r4 route add ${ipv6_prefix}34/127 dev veth-r4-r5 via ${ipv6_prefix}b # r26
+ip -6 -n r4 route add ${ipv6_prefix}36/127 dev veth-r4-r5 via ${ipv6_prefix}b # r27
+ip -6 -n r4 route add ${ipv6_prefix}38/127 dev veth-r4-r5 via ${ipv6_prefix}b # r28
+ip -6 -n r4 route add ${ipv6_prefix}3a/127 dev veth-r4-r5 via ${ipv6_prefix}b # r29
+ip -6 -n r4 route add ${ipv6_prefix}3c/127 dev veth-r4-r5 via ${ipv6_prefix}b # r30
+
+# r5
+ip -6 -n r5 route add ${ipv6_prefix}e/127 dev veth-r5-r6 via ${ipv6_prefix}d # r7
+ip -6 -n r5 route add ${ipv6_prefix}10/127 dev veth-r5-r6 via ${ipv6_prefix}d # r8
+ip -6 -n r5 route add ${ipv6_prefix}12/127 dev veth-r5-r6 via ${ipv6_prefix}d # r9
+ip -6 -n r5 route add ${ipv6_prefix}14/127 dev veth-r5-r6 via ${ipv6_prefix}d # r10
+ip -6 -n r5 route add ${ipv6_prefix}16/127 dev veth-r5-r6 via ${ipv6_prefix}d # r11
+ip -6 -n r5 route add ${ipv6_prefix}18/127 dev veth-r5-r6 via ${ipv6_prefix}d # r12
+ip -6 -n r5 route add ${ipv6_prefix}1a/127 dev veth-r5-r6 via ${ipv6_prefix}d # r13
+ip -6 -n r5 route add ${ipv6_prefix}1c/127 dev veth-r5-r6 via ${ipv6_prefix}d # r14
+ip -6 -n r5 route add ${ipv6_prefix}1e/127 dev veth-r5-r6 via ${ipv6_prefix}d # r15
+ip -6 -n r5 route add ${ipv6_prefix}20/127 dev veth-r5-r6 via ${ipv6_prefix}d # r16
+ip -6 -n r5 route add ${ipv6_prefix}22/127 dev veth-r5-r6 via ${ipv6_prefix}d # r17
+ip -6 -n r5 route add ${ipv6_prefix}24/127 dev veth-r5-r6 via ${ipv6_prefix}d # r18
+ip -6 -n r5 route add ${ipv6_prefix}26/127 dev veth-r5-r6 via ${ipv6_prefix}d # r19
+ip -6 -n r5 route add ${ipv6_prefix}28/127 dev veth-r5-r6 via ${ipv6_prefix}d # r20
+ip -6 -n r5 route add ${ipv6_prefix}2a/127 dev veth-r5-r6 via ${ipv6_prefix}d # r21
+ip -6 -n r5 route add ${ipv6_prefix}2c/127 dev veth-r5-r6 via ${ipv6_prefix}d # r22
+ip -6 -n r5 route add ${ipv6_prefix}2e/127 dev veth-r5-r6 via ${ipv6_prefix}d # r23
+ip -6 -n r5 route add ${ipv6_prefix}30/127 dev veth-r5-r6 via ${ipv6_prefix}d # r24
+ip -6 -n r5 route add ${ipv6_prefix}32/127 dev veth-r5-r6 via ${ipv6_prefix}d # r25
+ip -6 -n r5 route add ${ipv6_prefix}34/127 dev veth-r5-r6 via ${ipv6_prefix}d # r26
+ip -6 -n r5 route add ${ipv6_prefix}36/127 dev veth-r5-r6 via ${ipv6_prefix}d # r27
+ip -6 -n r5 route add ${ipv6_prefix}38/127 dev veth-r5-r6 via ${ipv6_prefix}d # r28
+ip -6 -n r5 route add ${ipv6_prefix}3a/127 dev veth-r5-r6 via ${ipv6_prefix}d # r29
+ip -6 -n r5 route add ${ipv6_prefix}3c/127 dev veth-r5-r6 via ${ipv6_prefix}d # r30
+
+# r6
+ip -6 -n r6 route add ${ipv6_prefix}10/127 dev veth-r6-r7 via ${ipv6_prefix}f # r8
+ip -6 -n r6 route add ${ipv6_prefix}12/127 dev veth-r6-r7 via ${ipv6_prefix}f # r9
+ip -6 -n r6 route add ${ipv6_prefix}14/127 dev veth-r6-r7 via ${ipv6_prefix}f # r10
+ip -6 -n r6 route add ${ipv6_prefix}16/127 dev veth-r6-r7 via ${ipv6_prefix}f # r11
+ip -6 -n r6 route add ${ipv6_prefix}18/127 dev veth-r6-r7 via ${ipv6_prefix}f # r12
+ip -6 -n r6 route add ${ipv6_prefix}1a/127 dev veth-r6-r7 via ${ipv6_prefix}f # r13
+ip -6 -n r6 route add ${ipv6_prefix}1c/127 dev veth-r6-r7 via ${ipv6_prefix}f # r14
+ip -6 -n r6 route add ${ipv6_prefix}1e/127 dev veth-r6-r7 via ${ipv6_prefix}f # r15
+ip -6 -n r6 route add ${ipv6_prefix}20/127 dev veth-r6-r7 via ${ipv6_prefix}f # r16
+ip -6 -n r6 route add ${ipv6_prefix}22/127 dev veth-r6-r7 via ${ipv6_prefix}f # r17
+ip -6 -n r6 route add ${ipv6_prefix}24/127 dev veth-r6-r7 via ${ipv6_prefix}f # r18
+ip -6 -n r6 route add ${ipv6_prefix}26/127 dev veth-r6-r7 via ${ipv6_prefix}f # r19
+ip -6 -n r6 route add ${ipv6_prefix}28/127 dev veth-r6-r7 via ${ipv6_prefix}f # r20
+ip -6 -n r6 route add ${ipv6_prefix}2a/127 dev veth-r6-r7 via ${ipv6_prefix}f # r21
+ip -6 -n r6 route add ${ipv6_prefix}2c/127 dev veth-r6-r7 via ${ipv6_prefix}f # r22
+ip -6 -n r6 route add ${ipv6_prefix}2e/127 dev veth-r6-r7 via ${ipv6_prefix}f # r23
+ip -6 -n r6 route add ${ipv6_prefix}30/127 dev veth-r6-r7 via ${ipv6_prefix}f # r24
+ip -6 -n r6 route add ${ipv6_prefix}32/127 dev veth-r6-r7 via ${ipv6_prefix}f # r25
+ip -6 -n r6 route add ${ipv6_prefix}34/127 dev veth-r6-r7 via ${ipv6_prefix}f # r26
+ip -6 -n r6 route add ${ipv6_prefix}36/127 dev veth-r6-r7 via ${ipv6_prefix}f # r27
+ip -6 -n r6 route add ${ipv6_prefix}38/127 dev veth-r6-r7 via ${ipv6_prefix}f # r28
+ip -6 -n r6 route add ${ipv6_prefix}3a/127 dev veth-r6-r7 via ${ipv6_prefix}f # r29
+ip -6 -n r6 route add ${ipv6_prefix}3c/127 dev veth-r6-r7 via ${ipv6_prefix}f # r30
+
+# r7
+ip -6 -n r7 route add ${ipv6_prefix}12/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r9
+ip -6 -n r7 route add ${ipv6_prefix}14/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r10
+ip -6 -n r7 route add ${ipv6_prefix}16/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r11
+ip -6 -n r7 route add ${ipv6_prefix}18/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r12
+ip -6 -n r7 route add ${ipv6_prefix}1a/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r13
+ip -6 -n r7 route add ${ipv6_prefix}1c/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r14
+ip -6 -n r7 route add ${ipv6_prefix}1e/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r15
+ip -6 -n r7 route add ${ipv6_prefix}20/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r16
+ip -6 -n r7 route add ${ipv6_prefix}22/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r17
+ip -6 -n r7 route add ${ipv6_prefix}24/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r18
+ip -6 -n r7 route add ${ipv6_prefix}26/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r19
+ip -6 -n r7 route add ${ipv6_prefix}28/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r20
+ip -6 -n r7 route add ${ipv6_prefix}2a/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r21
+ip -6 -n r7 route add ${ipv6_prefix}2c/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r22
+ip -6 -n r7 route add ${ipv6_prefix}2e/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r23
+ip -6 -n r7 route add ${ipv6_prefix}30/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r24
+ip -6 -n r7 route add ${ipv6_prefix}32/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r25
+ip -6 -n r7 route add ${ipv6_prefix}34/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r26
+ip -6 -n r7 route add ${ipv6_prefix}36/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r27
+ip -6 -n r7 route add ${ipv6_prefix}38/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r28
+ip -6 -n r7 route add ${ipv6_prefix}3a/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r29
+ip -6 -n r7 route add ${ipv6_prefix}3c/127 dev veth-r7-r8 via ${ipv6_prefix}11 # r30
+
+# r8
+ip -6 -n r8 route add ${ipv6_prefix}14/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r10
+ip -6 -n r8 route add ${ipv6_prefix}16/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r11
+ip -6 -n r8 route add ${ipv6_prefix}18/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r12
+ip -6 -n r8 route add ${ipv6_prefix}1a/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r13
+ip -6 -n r8 route add ${ipv6_prefix}1c/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r14
+ip -6 -n r8 route add ${ipv6_prefix}1e/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r15
+ip -6 -n r8 route add ${ipv6_prefix}20/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r16
+ip -6 -n r8 route add ${ipv6_prefix}22/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r17
+ip -6 -n r8 route add ${ipv6_prefix}24/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r18
+ip -6 -n r8 route add ${ipv6_prefix}26/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r19
+ip -6 -n r8 route add ${ipv6_prefix}28/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r20
+ip -6 -n r8 route add ${ipv6_prefix}2a/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r21
+ip -6 -n r8 route add ${ipv6_prefix}2c/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r22
+ip -6 -n r8 route add ${ipv6_prefix}2e/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r23
+ip -6 -n r8 route add ${ipv6_prefix}30/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r24
+ip -6 -n r8 route add ${ipv6_prefix}32/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r25
+ip -6 -n r8 route add ${ipv6_prefix}34/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r26
+ip -6 -n r8 route add ${ipv6_prefix}36/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r27
+ip -6 -n r8 route add ${ipv6_prefix}38/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r28
+ip -6 -n r8 route add ${ipv6_prefix}3a/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r29
+ip -6 -n r8 route add ${ipv6_prefix}3c/127 dev veth-r8-r9 via ${ipv6_prefix}13 # r30
+
+# r9
+ip -6 -n r9 route add ${ipv6_prefix}16/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r11
+ip -6 -n r9 route add ${ipv6_prefix}18/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r12
+ip -6 -n r9 route add ${ipv6_prefix}1a/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r13
+ip -6 -n r9 route add ${ipv6_prefix}1c/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r14
+ip -6 -n r9 route add ${ipv6_prefix}1e/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r15
+ip -6 -n r9 route add ${ipv6_prefix}20/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r16
+ip -6 -n r9 route add ${ipv6_prefix}22/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r17
+ip -6 -n r9 route add ${ipv6_prefix}24/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r18
+ip -6 -n r9 route add ${ipv6_prefix}26/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r19
+ip -6 -n r9 route add ${ipv6_prefix}28/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r20
+ip -6 -n r9 route add ${ipv6_prefix}2a/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r21
+ip -6 -n r9 route add ${ipv6_prefix}2c/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r22
+ip -6 -n r9 route add ${ipv6_prefix}2e/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r23
+ip -6 -n r9 route add ${ipv6_prefix}30/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r24
+ip -6 -n r9 route add ${ipv6_prefix}32/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r25
+ip -6 -n r9 route add ${ipv6_prefix}34/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r26
+ip -6 -n r9 route add ${ipv6_prefix}36/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r27
+ip -6 -n r9 route add ${ipv6_prefix}38/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r28
+ip -6 -n r9 route add ${ipv6_prefix}3a/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r29
+ip -6 -n r9 route add ${ipv6_prefix}3c/127 dev veth-r9-r10 via ${ipv6_prefix}15 # r30
+
+# r10
+ip -6 -n r10 route add ${ipv6_prefix}18/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r12
+ip -6 -n r10 route add ${ipv6_prefix}1a/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r13
+ip -6 -n r10 route add ${ipv6_prefix}1c/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r14
+ip -6 -n r10 route add ${ipv6_prefix}1e/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r15
+ip -6 -n r10 route add ${ipv6_prefix}20/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r16
+ip -6 -n r10 route add ${ipv6_prefix}22/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r17
+ip -6 -n r10 route add ${ipv6_prefix}24/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r18
+ip -6 -n r10 route add ${ipv6_prefix}26/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r19
+ip -6 -n r10 route add ${ipv6_prefix}28/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r20
+ip -6 -n r10 route add ${ipv6_prefix}2a/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r21
+ip -6 -n r10 route add ${ipv6_prefix}2c/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r22
+ip -6 -n r10 route add ${ipv6_prefix}2e/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r23
+ip -6 -n r10 route add ${ipv6_prefix}30/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r24
+ip -6 -n r10 route add ${ipv6_prefix}32/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r25
+ip -6 -n r10 route add ${ipv6_prefix}34/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r26
+ip -6 -n r10 route add ${ipv6_prefix}36/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r27
+ip -6 -n r10 route add ${ipv6_prefix}38/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r28
+ip -6 -n r10 route add ${ipv6_prefix}3a/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r29
+ip -6 -n r10 route add ${ipv6_prefix}3c/127 dev veth-r10-r11 via ${ipv6_prefix}17 # r30
+
+# r11
+ip -6 -n r11 route add ${ipv6_prefix}1a/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r13
+ip -6 -n r11 route add ${ipv6_prefix}1c/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r14
+ip -6 -n r11 route add ${ipv6_prefix}1e/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r15
+ip -6 -n r11 route add ${ipv6_prefix}20/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r16
+ip -6 -n r11 route add ${ipv6_prefix}22/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r17
+ip -6 -n r11 route add ${ipv6_prefix}24/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r18
+ip -6 -n r11 route add ${ipv6_prefix}26/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r19
+ip -6 -n r11 route add ${ipv6_prefix}28/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r20
+ip -6 -n r11 route add ${ipv6_prefix}2a/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r21
+ip -6 -n r11 route add ${ipv6_prefix}2c/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r22
+ip -6 -n r11 route add ${ipv6_prefix}2e/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r23
+ip -6 -n r11 route add ${ipv6_prefix}30/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r24
+ip -6 -n r11 route add ${ipv6_prefix}32/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r25
+ip -6 -n r11 route add ${ipv6_prefix}34/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r26
+ip -6 -n r11 route add ${ipv6_prefix}36/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r27
+ip -6 -n r11 route add ${ipv6_prefix}38/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r28
+ip -6 -n r11 route add ${ipv6_prefix}3a/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r29
+ip -6 -n r11 route add ${ipv6_prefix}3c/127 dev veth-r11-r12 via ${ipv6_prefix}19 # r30
+
+# r12
+ip -6 -n r12 route add ${ipv6_prefix}1c/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r14
+ip -6 -n r12 route add ${ipv6_prefix}1e/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r15
+ip -6 -n r12 route add ${ipv6_prefix}20/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r16
+ip -6 -n r12 route add ${ipv6_prefix}22/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r17
+ip -6 -n r12 route add ${ipv6_prefix}24/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r18
+ip -6 -n r12 route add ${ipv6_prefix}26/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r19
+ip -6 -n r12 route add ${ipv6_prefix}28/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r20
+ip -6 -n r12 route add ${ipv6_prefix}2a/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r21
+ip -6 -n r12 route add ${ipv6_prefix}2c/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r22
+ip -6 -n r12 route add ${ipv6_prefix}2e/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r23
+ip -6 -n r12 route add ${ipv6_prefix}30/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r24
+ip -6 -n r12 route add ${ipv6_prefix}32/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r25
+ip -6 -n r12 route add ${ipv6_prefix}34/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r26
+ip -6 -n r12 route add ${ipv6_prefix}36/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r27
+ip -6 -n r12 route add ${ipv6_prefix}38/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r28
+ip -6 -n r12 route add ${ipv6_prefix}3a/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r29
+ip -6 -n r12 route add ${ipv6_prefix}3c/127 dev veth-r12-r13 via ${ipv6_prefix}1b # r30
+
+# r13
+ip -6 -n r13 route add ${ipv6_prefix}1e/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r15
+ip -6 -n r13 route add ${ipv6_prefix}20/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r16
+ip -6 -n r13 route add ${ipv6_prefix}22/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r17
+ip -6 -n r13 route add ${ipv6_prefix}24/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r18
+ip -6 -n r13 route add ${ipv6_prefix}26/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r19
+ip -6 -n r13 route add ${ipv6_prefix}28/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r20
+ip -6 -n r13 route add ${ipv6_prefix}2a/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r21
+ip -6 -n r13 route add ${ipv6_prefix}2c/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r22
+ip -6 -n r13 route add ${ipv6_prefix}2e/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r23
+ip -6 -n r13 route add ${ipv6_prefix}30/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r24
+ip -6 -n r13 route add ${ipv6_prefix}32/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r25
+ip -6 -n r13 route add ${ipv6_prefix}34/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r26
+ip -6 -n r13 route add ${ipv6_prefix}36/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r27
+ip -6 -n r13 route add ${ipv6_prefix}38/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r28
+ip -6 -n r13 route add ${ipv6_prefix}3a/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r29
+ip -6 -n r13 route add ${ipv6_prefix}3c/127 dev veth-r13-r14 via ${ipv6_prefix}1d # r30
+
+# r14
+ip -6 -n r14 route add ${ipv6_prefix}20/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r16
+ip -6 -n r14 route add ${ipv6_prefix}22/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r17
+ip -6 -n r14 route add ${ipv6_prefix}24/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r18
+ip -6 -n r14 route add ${ipv6_prefix}26/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r19
+ip -6 -n r14 route add ${ipv6_prefix}28/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r20
+ip -6 -n r14 route add ${ipv6_prefix}2a/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r21
+ip -6 -n r14 route add ${ipv6_prefix}2c/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r22
+ip -6 -n r14 route add ${ipv6_prefix}2e/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r23
+ip -6 -n r14 route add ${ipv6_prefix}30/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r24
+ip -6 -n r14 route add ${ipv6_prefix}32/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r25
+ip -6 -n r14 route add ${ipv6_prefix}34/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r26
+ip -6 -n r14 route add ${ipv6_prefix}36/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r27
+ip -6 -n r14 route add ${ipv6_prefix}38/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r28
+ip -6 -n r14 route add ${ipv6_prefix}3a/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r29
+ip -6 -n r14 route add ${ipv6_prefix}3c/127 dev veth-r14-r15 via ${ipv6_prefix}1f # r30
+
+# r15
+ip -6 -n r15 route add ${ipv6_prefix}22/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r17
+ip -6 -n r15 route add ${ipv6_prefix}24/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r18
+ip -6 -n r15 route add ${ipv6_prefix}26/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r19
+ip -6 -n r15 route add ${ipv6_prefix}28/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r20
+ip -6 -n r15 route add ${ipv6_prefix}2a/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r21
+ip -6 -n r15 route add ${ipv6_prefix}2c/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r22
+ip -6 -n r15 route add ${ipv6_prefix}2e/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r23
+ip -6 -n r15 route add ${ipv6_prefix}30/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r24
+ip -6 -n r15 route add ${ipv6_prefix}32/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r25
+ip -6 -n r15 route add ${ipv6_prefix}34/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r26
+ip -6 -n r15 route add ${ipv6_prefix}36/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r27
+ip -6 -n r15 route add ${ipv6_prefix}38/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r28
+ip -6 -n r15 route add ${ipv6_prefix}3a/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r29
+ip -6 -n r15 route add ${ipv6_prefix}3c/127 dev veth-r15-r16 via ${ipv6_prefix}21 # r30
+
+# r16
+ip -6 -n r16 route add ${ipv6_prefix}24/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r18
+ip -6 -n r16 route add ${ipv6_prefix}26/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r19
+ip -6 -n r16 route add ${ipv6_prefix}28/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r20
+ip -6 -n r16 route add ${ipv6_prefix}2a/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r21
+ip -6 -n r16 route add ${ipv6_prefix}2c/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r22
+ip -6 -n r16 route add ${ipv6_prefix}2e/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r23
+ip -6 -n r16 route add ${ipv6_prefix}30/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r24
+ip -6 -n r16 route add ${ipv6_prefix}32/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r25
+ip -6 -n r16 route add ${ipv6_prefix}34/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r26
+ip -6 -n r16 route add ${ipv6_prefix}36/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r27
+ip -6 -n r16 route add ${ipv6_prefix}38/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r28
+ip -6 -n r16 route add ${ipv6_prefix}3a/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r29
+ip -6 -n r16 route add ${ipv6_prefix}3c/127 dev veth-r16-r17 via ${ipv6_prefix}23 # r30
+
+# r17
+ip -6 -n r17 route add ${ipv6_prefix}26/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r19
+ip -6 -n r17 route add ${ipv6_prefix}28/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r20
+ip -6 -n r17 route add ${ipv6_prefix}2a/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r21
+ip -6 -n r17 route add ${ipv6_prefix}2c/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r22
+ip -6 -n r17 route add ${ipv6_prefix}2e/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r23
+ip -6 -n r17 route add ${ipv6_prefix}30/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r24
+ip -6 -n r17 route add ${ipv6_prefix}32/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r25
+ip -6 -n r17 route add ${ipv6_prefix}34/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r26
+ip -6 -n r17 route add ${ipv6_prefix}36/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r27
+ip -6 -n r17 route add ${ipv6_prefix}38/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r28
+ip -6 -n r17 route add ${ipv6_prefix}3a/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r29
+ip -6 -n r17 route add ${ipv6_prefix}3c/127 dev veth-r17-r18 via ${ipv6_prefix}25 # r30
+
+# r18
+ip -6 -n r18 route add ${ipv6_prefix}28/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r20
+ip -6 -n r18 route add ${ipv6_prefix}2a/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r21
+ip -6 -n r18 route add ${ipv6_prefix}2c/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r22
+ip -6 -n r18 route add ${ipv6_prefix}2e/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r23
+ip -6 -n r18 route add ${ipv6_prefix}30/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r24
+ip -6 -n r18 route add ${ipv6_prefix}32/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r25
+ip -6 -n r18 route add ${ipv6_prefix}34/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r26
+ip -6 -n r18 route add ${ipv6_prefix}36/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r27
+ip -6 -n r18 route add ${ipv6_prefix}38/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r28
+ip -6 -n r18 route add ${ipv6_prefix}3a/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r29
+ip -6 -n r18 route add ${ipv6_prefix}3c/127 dev veth-r18-r19 via ${ipv6_prefix}27 # r30
+
+# r19
+ip -6 -n r19 route add ${ipv6_prefix}2a/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r21
+ip -6 -n r19 route add ${ipv6_prefix}2c/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r22
+ip -6 -n r19 route add ${ipv6_prefix}2e/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r23
+ip -6 -n r19 route add ${ipv6_prefix}30/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r24
+ip -6 -n r19 route add ${ipv6_prefix}32/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r25
+ip -6 -n r19 route add ${ipv6_prefix}34/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r26
+ip -6 -n r19 route add ${ipv6_prefix}36/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r27
+ip -6 -n r19 route add ${ipv6_prefix}38/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r28
+ip -6 -n r19 route add ${ipv6_prefix}3a/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r29
+ip -6 -n r19 route add ${ipv6_prefix}3c/127 dev veth-r19-r20 via ${ipv6_prefix}29 # r30
+
+# r20
+ip -6 -n r20 route add ${ipv6_prefix}2c/127 dev veth-r20-r21 via ${ipv6_prefix}2b # r22
+ip -6 -n r20 route add ${ipv6_prefix}2e/127 dev veth-r20-r21 via ${ipv6_prefix}2b # r23
+ip -6 -n r20 route add ${ipv6_prefix}30/127 dev veth-r20-r21 via ${ipv6_prefix}2b # r24
+ip -6 -n r20 route add ${ipv6_prefix}32/127 dev veth-r20-r21 via ${ipv6_prefix}2b # r25
+ip -6 -n r20 route add ${ipv6_prefix}34/127 dev veth-r20-r21 via ${ipv6_prefix}2b # r26
+ip -6 -n r20 route add ${ipv6_prefix}36/127 dev veth-r20-r21 via ${ipv6_prefix}2b # r27
+ip -6 -n r20 route add ${ipv6_prefix}38/127 dev veth-r20-r21 via ${ipv6_prefix}2b # r28
+ip -6 -n r20 route add ${ipv6_prefix}3a/127 dev veth-r20-r21 via ${ipv6_prefix}2b # r29
+ip -6 -n r20 route add ${ipv6_prefix}3c/127 dev veth-r20-r21 via ${ipv6_prefix}2b # r30
+
+# r21
+ip -6 -n r21 route add ${ipv6_prefix}2e/127 dev veth-r21-r22 via ${ipv6_prefix}2d # r23
+ip -6 -n r21 route add ${ipv6_prefix}30/127 dev veth-r21-r22 via ${ipv6_prefix}2d # r24
+ip -6 -n r21 route add ${ipv6_prefix}32/127 dev veth-r21-r22 via ${ipv6_prefix}2d # r25
+ip -6 -n r21 route add ${ipv6_prefix}34/127 dev veth-r21-r22 via ${ipv6_prefix}2d # r26
+ip -6 -n r21 route add ${ipv6_prefix}36/127 dev veth-r21-r22 via ${ipv6_prefix}2d # r27
+ip -6 -n r21 route add ${ipv6_prefix}38/127 dev veth-r21-r22 via ${ipv6_prefix}2d # r28
+ip -6 -n r21 route add ${ipv6_prefix}3a/127 dev veth-r21-r22 via ${ipv6_prefix}2d # r29
+ip -6 -n r21 route add ${ipv6_prefix}3c/127 dev veth-r21-r22 via ${ipv6_prefix}2d # r30
+
+# r22
+ip -6 -n r22 route add ${ipv6_prefix}30/127 dev veth-r22-r23 via ${ipv6_prefix}2f # r24
+ip -6 -n r22 route add ${ipv6_prefix}32/127 dev veth-r22-r23 via ${ipv6_prefix}2f # r25
+ip -6 -n r22 route add ${ipv6_prefix}34/127 dev veth-r22-r23 via ${ipv6_prefix}2f # r26
+ip -6 -n r22 route add ${ipv6_prefix}36/127 dev veth-r22-r23 via ${ipv6_prefix}2f # r27
+ip -6 -n r22 route add ${ipv6_prefix}38/127 dev veth-r22-r23 via ${ipv6_prefix}2f # r28
+ip -6 -n r22 route add ${ipv6_prefix}3a/127 dev veth-r22-r23 via ${ipv6_prefix}2f # r29
+ip -6 -n r22 route add ${ipv6_prefix}3c/127 dev veth-r22-r23 via ${ipv6_prefix}2f # r30
+
+# r23
+ip -6 -n r23 route add ${ipv6_prefix}32/127 dev veth-r23-r24 via ${ipv6_prefix}31 # r25
+ip -6 -n r23 route add ${ipv6_prefix}34/127 dev veth-r23-r24 via ${ipv6_prefix}31 # r26
+ip -6 -n r23 route add ${ipv6_prefix}36/127 dev veth-r23-r24 via ${ipv6_prefix}31 # r27
+ip -6 -n r23 route add ${ipv6_prefix}38/127 dev veth-r23-r24 via ${ipv6_prefix}31 # r28
+ip -6 -n r23 route add ${ipv6_prefix}3a/127 dev veth-r23-r24 via ${ipv6_prefix}31 # r29
+ip -6 -n r23 route add ${ipv6_prefix}3c/127 dev veth-r23-r24 via ${ipv6_prefix}31 # r30
+
+# r24
+ip -6 -n r24 route add ${ipv6_prefix}34/127 dev veth-r24-r25 via ${ipv6_prefix}33 # r26
+ip -6 -n r24 route add ${ipv6_prefix}36/127 dev veth-r24-r25 via ${ipv6_prefix}33 # r27
+ip -6 -n r24 route add ${ipv6_prefix}38/127 dev veth-r24-r25 via ${ipv6_prefix}33 # r28
+ip -6 -n r24 route add ${ipv6_prefix}3a/127 dev veth-r24-r25 via ${ipv6_prefix}33 # r29
+ip -6 -n r24 route add ${ipv6_prefix}3c/127 dev veth-r24-r25 via ${ipv6_prefix}33 # r30
+
+# r25
+ip -6 -n r25 route add ${ipv6_prefix}36/127 dev veth-r25-r26 via ${ipv6_prefix}35 # r27
+ip -6 -n r25 route add ${ipv6_prefix}38/127 dev veth-r25-r26 via ${ipv6_prefix}35 # r28
+ip -6 -n r25 route add ${ipv6_prefix}3a/127 dev veth-r25-r26 via ${ipv6_prefix}35 # r29
+ip -6 -n r25 route add ${ipv6_prefix}3c/127 dev veth-r25-r26 via ${ipv6_prefix}35 # r30
+
+# r26
+ip -6 -n r26 route add ${ipv6_prefix}38/127 dev veth-r26-r27 via ${ipv6_prefix}37 # r28
+ip -6 -n r26 route add ${ipv6_prefix}3a/127 dev veth-r26-r27 via ${ipv6_prefix}37 # r29
+ip -6 -n r26 route add ${ipv6_prefix}3c/127 dev veth-r26-r27 via ${ipv6_prefix}37 # r30
+
+# r27
+ip -6 -n r27 route add ${ipv6_prefix}3a/127 dev veth-r27-r28 via ${ipv6_prefix}39 # r29
+ip -6 -n r27 route add ${ipv6_prefix}3c/127 dev veth-r27-r28 via ${ipv6_prefix}39 # r30
+
+# r28
+ip -6 -n r28 route add ${ipv6_prefix}3c/127 dev veth-r28-r29 via ${ipv6_prefix}3b # r30

@@ -1,20 +1,18 @@
 #!/bin/bash
 
-IPV6_ADDRESS=${ipv6_address}
-IPV6_PREFIX=${ipv6_prefix}
-
-echo "addr = $${IPV6_ADDRESS}" >> /home/ubuntu/init.out
-echo "prefix = $${IPV6_PREFIX}" >> /home/ubuntu/init.out
-
 cat << EOS > /etc/netplan/60-config.yaml
 network:
   version: 2
   ethernets:
     ens5:
       addresses:
-        - $${IPV6_PREFIX}
+        - ${ipv6_prefix}1/80
 EOS
 
 chmod 600 /etc/netplan/60-config.yaml
 netplan apply
+
+snap install aws-cli --classic
+aws s3 cp s3://${s3_bucket}/multihop.sh /opt/multihop.sh
+bash /opt/multihop.sh | tee -a /opt/multihop.log
 
