@@ -11,12 +11,19 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5"
+    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.0"
     }
   }
 }
+
+variable "bucket" {} # for terraform backend
+variable "cloudflare_api_token" {}
 
 provider "aws" {
   region = "ap-northeast-1"
@@ -26,6 +33,10 @@ provider "aws" {
       Description = "for CyberAgent Developers Advent Calendar 2025"
     }
   }
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
 }
 
 resource "random_string" "tfstate_suffix" {
