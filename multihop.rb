@@ -1,4 +1,4 @@
-HOPS = 30
+HOPS = 32
 
 puts "#!/bin/bash"
 puts "set -eux"
