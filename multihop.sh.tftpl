@@ -978,3 +978,15 @@ ip -6 -n r29 route add ${ipv6_prefix}40/127 dev veth-r29-r30 via ${ipv6_prefix}3
 
 # r30
 ip -6 -n r30 route add ${ipv6_prefix}40/127 dev veth-r30-r31 via ${ipv6_prefix}3f # r32
+
+# setup firewall
+
+nft add table inet icmpv6-filter
+nft add chain inet icmpv6-filter input '{ type filter hook input priority 0 ; policy accept ; }'
+nft add chain inet icmpv6-filter forward '{ type filter hook forward priority 0 ; policy accept ; }'
+nft add rule inet icmpv6-filter input 'icmpv6 type echo-request meta length > 128 counter drop'
+nft add rule inet icmpv6-filter input 'icmpv6 type echo-request meter in_ping_prefix_limit { ip6 saddr & ffff:ffff:ffff:ff00:: limit rate 10/second burst 200 packets } counter accept'
+nft add rule inet icmpv6-filter input 'icmpv6 type echo-request counter drop'
+nft add rule inet icmpv6-filter forward 'icmpv6 type echo-request meta length > 128 counter drop'
+nft add rule inet icmpv6-filter forward 'icmpv6 type echo-request meter fwd_ping_prefix_limit { ip6 saddr & ffff:ffff:ffff:ff00:: limit rate 10/second burst 200 packets } counter accept'
+nft add rule inet icmpv6-filter forward 'icmpv6 type echo-request counter drop'

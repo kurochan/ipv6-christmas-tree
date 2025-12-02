@@ -67,3 +67,20 @@ HOPS.times do |i|
     puts "ip -6 -n #{rt} route add ${ipv6_prefix}#{(rr * 2).to_s(16)}/127 dev veth-#{rt}-#{rtn} via ${ipv6_prefix}#{(r * 2 + 3).to_s(16)} # #{rrt}"
   end
 end
+
+puts ""
+puts "# setup firewall"
+puts ""
+
+puts "nft add table inet icmpv6-filter"
+puts "nft add chain inet icmpv6-filter input '{ type filter hook input priority 0 ; policy accept ; }'"
+puts "nft add chain inet icmpv6-filter forward '{ type filter hook forward priority 0 ; policy accept ; }'"
+
+puts "nft add rule inet icmpv6-filter input 'icmpv6 type echo-request meta length > 128 counter drop'"
+puts "nft add rule inet icmpv6-filter input 'icmpv6 type echo-request meter in_ping_prefix_limit { ip6 saddr & ffff:ffff:ffff:ff00:: limit rate 10/second burst 200 packets } counter accept'"
+puts "nft add rule inet icmpv6-filter input 'icmpv6 type echo-request counter drop'"
+
+puts "nft add rule inet icmpv6-filter forward 'icmpv6 type echo-request meta length > 128 counter drop'"
+puts "nft add rule inet icmpv6-filter forward 'icmpv6 type echo-request meter fwd_ping_prefix_limit { ip6 saddr & ffff:ffff:ffff:ff00:: limit rate 10/second burst 200 packets } counter accept'"
+puts "nft add rule inet icmpv6-filter forward 'icmpv6 type echo-request counter drop'"
+
