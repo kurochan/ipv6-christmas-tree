@@ -1,4 +1,4 @@
-# IPv6 Christmas Tree
+# 🎄 IPv6 Christmas Tree 🎄
 
 ```
 $ traceroute6 -I xmas.example.com
